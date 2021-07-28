@@ -40,12 +40,14 @@ void loop() {
         //Else Ask each neighbor to search for off blinks
         isSearchingForWin = true;
         neighborSearchingForWin = 0;
+//        indexOfNeighborToReportTo = 6;  //special for master blink
       }
     }
 
     if (isSearchingForWin) {
       if (isValueReceivedOnFaceExpired(neighborSearchingForWin)) {
-        neighborSearchingForWin++;
+        neighborSearchingForWin++;// = clockwiseFromFace(neighborSearchingForWin, 1);
+        //if(neighborSearchingForWinindexOfNeighborToReportTo
       }
       else { //found neighbor
 
@@ -96,7 +98,8 @@ void loop() {
               // I've been asked to search
               indexOfNeighborToReportTo = f;
               isSearchingForWin = true;
-              neighborSearchingForWin = f+1;
+              
+              neighborSearchingForWin = (f + 1) % 6;
             }
           }
         }
@@ -147,5 +150,5 @@ void loop() {
       }
     }
   }
-  setColorOnFace(BLUE,0);
+  setColorOnFace(MAGENTA,neighborSearchingForWin);
 }
