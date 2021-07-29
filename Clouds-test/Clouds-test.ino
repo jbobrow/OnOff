@@ -57,6 +57,7 @@ void loop() {
     if (isSearchingForWin) {
 
       if (isValueReceivedOnFaceExpired(neighborSearchingForWin)) { // no neighbor!
+        faceValues[neighborSearchingForWin] = NO_FOUND_OFF;
         neighborSearchingForWin = (neighborSearchingForWin + 1) % 6;
 
       }
