@@ -17,7 +17,7 @@ byte faceValues[6] = {CHILL, CHILL, CHILL, CHILL, CHILL, CHILL};
 
 
 Timer slowTimer;
-#define FRAME_DELAY 200
+#define FRAME_DELAY 500
 
 Timer flashTimer;
 #define FLASH_DELAY 100
@@ -213,7 +213,7 @@ void loop() {
     flashTimer.set(FLASH_DELAY);
 
   }
-  if (flashOn) {
+  if (flashOn && isSearchingForWin) {
     setColorOnFace(OFF, neighborSearchingForWin);
   }
 
