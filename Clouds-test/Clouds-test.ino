@@ -3,15 +3,24 @@ enum winSearchValues {CHILL, SEARCHING, FOUND_OFF, NO_FOUND_OFF};
 byte winSearchValue;
 
 bool isSearchingForWin;
-bool isOn = false;
+bool isOn = true;
+bool foundWin = false;
+bool flashOn = false;
+
+
 bool isWaitingOnNeighbor;
-byte neighborSearchingForWin;
+byte neighborSearchingForWin;    //changing index
 byte indexOfNeighborToReportTo;  // use this for where we started our search
+
 
 byte faceValues[6] = {CHILL, CHILL, CHILL, CHILL, CHILL, CHILL};
 
+
 Timer slowTimer;
-#define FRAME_DELAY 500
+#define FRAME_DELAY 200
+
+Timer flashTimer;
+#define FLASH_DELAY 100
 
 void setup() {
 
@@ -40,25 +49,33 @@ void loop() {
         //Else Ask each neighbor to search for off blinks
         isSearchingForWin = true;
         neighborSearchingForWin = 0;
-//        indexOfNeighborToReportTo = 6;  //special for master blink
+        indexOfNeighborToReportTo = 6;  //special for master blink
+
       }
     }
 
     if (isSearchingForWin) {
-      if (isValueReceivedOnFaceExpired(neighborSearchingForWin)) {
-        neighborSearchingForWin++;// = clockwiseFromFace(neighborSearchingForWin, 1);
-        //if(neighborSearchingForWinindexOfNeighborToReportTo
+      
+      if (isValueReceivedOnFaceExpired(neighborSearchingForWin)) { // no neighbor!
+        neighborSearchingForWin = (neighborSearchingForWin + 1) % 6;
+
       }
-      else { //found neighbor
+      else { //found neighbor!
+        if(neighborSearchingForWin == indexOfNeighborToReportTo) {
+          faceValues[neighborSearchingForWin] = NO_FOUND_OFF;
+            setValueSentOnFace(faceValues[indexOfNeighborToReportTo], indexOfNeighborToReportTo);
+        }
+
+        byte neighborValue = getLastValueReceivedOnFace(neighborSearchingForWin);
 
         //if neighbor has been asked to search
         if (!isWaitingOnNeighbor) {
 
-          byte neighborValue = getLastValueReceivedOnFace(neighborSearchingForWin);
 
           if (neighborValue == CHILL) {
             faceValues[neighborSearchingForWin] = SEARCHING;
             setValueSentOnFace(faceValues[neighborSearchingForWin], neighborSearchingForWin);
+            isWaitingOnNeighbor = true;
           }
           else if (neighborValue == SEARCHING ) {
             //do nothing, waiting for them to search
@@ -74,11 +91,28 @@ void loop() {
             //Ask neighbor to search for off blinks
             faceValues[neighborSearchingForWin] = NO_FOUND_OFF;
             setValueSentOnFace(faceValues[neighborSearchingForWin], neighborSearchingForWin);
-            isWaitingOnNeighbor = true;
+            isWaitingOnNeighbor = false;
 
           }
 
-        }
+        } // end waiting on neighbor
+        else {  // am waiting on neighor
+          if (neighborValue == FOUND_OFF) {
+            isSearchingForWin = false;
+            isWaitingOnNeighbor = false;
+            neighborSearchingForWin = 0;
+            faceValues[indexOfNeighborToReportTo] = FOUND_OFF;
+            setValueSentOnFace(faceValues[indexOfNeighborToReportTo], indexOfNeighborToReportTo);
+          }
+          else if (neighborValue == NO_FOUND_OFF) {
+            //Ask neighbor to search for off blinks
+            faceValues[neighborSearchingForWin] = NO_FOUND_OFF;
+            setValueSentOnFace(faceValues[neighborSearchingForWin], neighborSearchingForWin);
+            isWaitingOnNeighbor = false;
+            neighborSearchingForWin = (neighborSearchingForWin + 1) % 6;  // continue looking to the next one
+          }
+
+        }       
       }
     }
     else // not yet searching, listening for the opportunity to participate
@@ -88,67 +122,92 @@ void loop() {
         if (!isValueReceivedOnFaceExpired(f)) {
           byte neighborValue = getLastValueReceivedOnFace(f);
 
-          if (neighborValue == SEARCHING) {
-            
-            if(!isOn) {
+          if (neighborValue == SEARCHING) { //if neighbor face value is searching
+
+            if (!isOn) { //if off
               faceValues[f] = FOUND_OFF;
               setValueSentOnFace(faceValues[f], f);
             }
-            else {
+            else { //if on
               // I've been asked to search
               indexOfNeighborToReportTo = f;
+             // faceValues[f] = NO_FOUND_OFF;
+              setValueSentOnFace(faceValues[f], f);
+              neighborSearchingForWin = (f + 1) % 6; //move clockwise on faces
               isSearchingForWin = true;
-              
-              neighborSearchingForWin = (f + 1) % 6;
             }
-          }
-        }
-      }
+
+          } // end if neighbor is searching
 
 
+        }// end if neighbor is present
 
 
-      // Listen for message from neighbor to search for any off blinks
-      // if I am off,
-      // return message to neighbor asking me to search; message should say "i am an off blink"
-      // else if any of my neighbors are not yet searched blinks
-      // then ask them to search for any off blinks
+      } // end for loop
+    } // end not yet searching
 
-      //setValueSentOnAllFaces(neighborSearchingForWin);
+  } // end slow timer
 
-    }
-    if (isOn) {
-      setColor(WHITE);
-    }
-    else {
-      setColor(dim(BLUE, 64));
-    }
 
-    // DEBUG VISUALIZATION
+  // Listen for message from neighbor to search for any off blinks
+  // if I am off,
+  // return message to neighbor asking me to search; message should say "i am an off blink"
+  // else if any of my neighbors are not yet searched blinks
+  // then ask them to search for any off blinks
+
+  //setValueSentOnAllFaces(neighborSearchingForWin);
+
+
+  if (isOn) {
+    setColor(WHITE);
+  }
+  else {
+    setColor(dim(BLUE, 64));
+  }
+
+
+  if (foundWin) {
     FOREACH_FACE(f) {
-      switch (faceValues[f]) {
-        case CHILL:
-          {
-            if (isOn) {
-              setColorOnFace(WHITE, f);
-            }
-            else {
-              setColorOnFace(dim(BLUE, 64), f);
-            }
-          }
-          break;
-        case SEARCHING:
-          setColorOnFace(YELLOW, f);
-          break;
-        case FOUND_OFF:
-          setColorOnFace(RED, f);
-          break;
-        case NO_FOUND_OFF:
-          setColorOnFace(GREEN, f);
-          break;
-
-      }
+      setColorOnFace(ORANGE, f);
     }
   }
-  setColorOnFace(MAGENTA,neighborSearchingForWin);
+
+
+  // DEBUG VISUALIZATION
+  FOREACH_FACE(f) {
+    switch (faceValues[f]) {
+      case CHILL:
+        {
+          if (isOn) {
+            setColorOnFace(WHITE, f);
+          }
+          else {
+            setColorOnFace(dim(BLUE, 64), f);
+          }
+
+        }
+        break;
+      case SEARCHING:
+        setColorOnFace(YELLOW, f);
+        break;
+      case FOUND_OFF:
+        setColorOnFace(RED, f);
+        break;
+      case NO_FOUND_OFF:
+        setColorOnFace(GREEN, f);
+        break;
+
+    }
+  } //END DEBUG VISUALIZATION
+  if (flashTimer.isExpired()) {
+    flashOn = !flashOn;
+    flashTimer.set(FLASH_DELAY);
+
+  }
+  if (flashOn) {
+    setColorOnFace(OFF, neighborSearchingForWin);
+  }
+  if (isWaitingOnNeighbor) {
+    setColorOnFace(BLUE, 0);
+  }
 }
