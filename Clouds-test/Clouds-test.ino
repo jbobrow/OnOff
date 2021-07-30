@@ -43,7 +43,6 @@ void loop() {
       //If I am an off blink, no need to search
       if (!isOn) {
         isSearchingForWin = false;
-
       }
       else {
         //Else Ask each neighbor to search for off blinks
@@ -126,8 +125,9 @@ void loop() {
       FOREACH_FACE(f) {
         if (!isValueReceivedOnFaceExpired(f)) {
           byte neighborValue = getLastValueReceivedOnFace(f);
+          
 
-          if (neighborValue == WAITING) { //if neighbor face value is searching
+          if (neighborValue == WAITING && f != indexOfNeighborToReportTo) { //if neighbor face value is searching
 
             // set all to searching
             setAllTo(SEARCHING);
@@ -145,7 +145,6 @@ void loop() {
             }
 
           } // end if neighbor is searching
-
 
         }// end if neighbor is present
 
