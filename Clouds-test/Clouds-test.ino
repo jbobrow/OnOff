@@ -10,7 +10,7 @@ bool foundSearcher = false;
 
 bool isWaitingOnNeighbor;
 byte neighborSearchingForWin;    //changing index
-byte indexOfNeighborToReportTo;  // use this for where we started our search
+byte indexOfNeighborToReportTo = 6;  // use this for where we started our search
 
 
 byte faceValues[6] = {CHILL, CHILL, CHILL, CHILL, CHILL, CHILL};
