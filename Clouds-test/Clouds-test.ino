@@ -17,7 +17,7 @@ byte faceValues[6] = {CHILL, CHILL, CHILL, CHILL, CHILL, CHILL};
 
 
 Timer slowTimer;
-#define FRAME_DELAY 500
+#define FRAME_DELAY 200
 
 Timer flashTimer;
 #define FLASH_DELAY 100
@@ -58,12 +58,12 @@ void loop() {
       if (isValueReceivedOnFaceExpired(neighborSearchingForWin)) { // no neighbor!
         faceValues[neighborSearchingForWin] = NO_FOUND_OFF;
         neighborSearchingForWin = (neighborSearchingForWin + 1) % 6;
-
       }
       else { //found neighbor!
         if (neighborSearchingForWin == indexOfNeighborToReportTo) {
           faceValues[neighborSearchingForWin] = NO_FOUND_OFF;
           faceValues[indexOfNeighborToReportTo] = NO_FOUND_OFF;
+          isSearchingForWin = false;
         }
         else {
 
@@ -104,6 +104,7 @@ void loop() {
             }
 
             if (neighborValue == FOUND_OFF) {
+              faceValues[neighborSearchingForWin] = FOUND_OFF;
               isSearchingForWin = false;
               isWaitingOnNeighbor = false;
               neighborSearchingForWin = 0;
@@ -125,7 +126,7 @@ void loop() {
       FOREACH_FACE(f) {
         if (!isValueReceivedOnFaceExpired(f)) {
           byte neighborValue = getLastValueReceivedOnFace(f);
-          
+
 
           if (neighborValue == WAITING && f != indexOfNeighborToReportTo) { //if neighbor face value is searching
 
