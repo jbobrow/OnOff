@@ -1,3 +1,10 @@
+/*
+ * Search for any "OFF" Blinks, if none found, signal win condition
+ * 
+ * How to use:
+ *  Single Click = turn a Blink on or off (toggle)
+ *  Double Click = start search from this Blink
+ */
 
 enum winSearchValues {CHILL, SEARCHING, WAITING, FOUND_OFF, NO_FOUND_OFF};
 byte winSearchValue;
