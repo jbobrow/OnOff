@@ -7,6 +7,7 @@ bool isOn = true;
 bool foundWin = false;
 bool flashOn = false;
 bool foundSearcher = false;
+bool firstVisit = false;
 
 bool isWaitingOnNeighbor;
 byte neighborSearchingForWin;    //changing index
@@ -50,10 +51,20 @@ void loop() {
         setAllTo(SEARCHING);
         neighborSearchingForWin = 0;
         indexOfNeighborToReportTo = 6;  //special for master blink
+        firstVisit = true;
       }
+
     }
 
     if (isSearchingForWin) {
+
+      //check if done
+      if (isDoneSearching()) {
+        isSearchingForWin = false;
+        if (indexOfNeighborToReportTo == 6) { // if I am the origin
+          foundWin = true;
+        }
+      }
 
       if (isValueReceivedOnFaceExpired(neighborSearchingForWin)) { // no neighbor!
         faceValues[neighborSearchingForWin] = NO_FOUND_OFF;
@@ -69,20 +80,15 @@ void loop() {
 
           byte neighborValue = getLastValueReceivedOnFace(neighborSearchingForWin);
 
-          if (neighborValue == SEARCHING ) {
-            //do nothing, waiting for them to search
-          }
-
-          //if neighbor has been asked to search
-          if (!isWaitingOnNeighbor) {
-
+          if (!isWaitingOnNeighbor) { // if neighbor has not yet been asked to search
 
             if (neighborValue == CHILL) {
               faceValues[neighborSearchingForWin] = WAITING;
               isWaitingOnNeighbor = true;
             }
             else if (neighborValue == SEARCHING ) {
-              //do nothing, waiting for them to search
+              //ignore and move on to the next one
+              faceValues[neighborSearchingForWin] = NO_FOUND_OFF;
               neighborSearchingForWin = (neighborSearchingForWin + 1) % 6;  // continue looking to the next one
             }
             else if (neighborValue == FOUND_OFF) {
@@ -93,28 +99,47 @@ void loop() {
             else if (neighborValue == NO_FOUND_OFF) {
               //Ask neighbor to search for off blinks
               faceValues[neighborSearchingForWin] = NO_FOUND_OFF;
+              neighborSearchingForWin = (neighborSearchingForWin + 1) % 6;  // continue looking to the next one
             }
 
           } // end not waiting on neighbor
           else {  // am waiting on neighor
 
             // let the one I am reporting to know I am waiting on a neighbor
-            if (indexOfNeighborToReportTo != 6) {
+            if (indexOfNeighborToReportTo != 6) { // if I have someone to report to
               faceValues[indexOfNeighborToReportTo] = WAITING;
             }
 
-            if (neighborValue == FOUND_OFF) {
+            if (neighborValue == FOUND_OFF) { // just heard back from neighbor that they FOUND AN OFF
               faceValues[neighborSearchingForWin] = FOUND_OFF;
               isSearchingForWin = false;
               isWaitingOnNeighbor = false;
               neighborSearchingForWin = 0;
               faceValues[indexOfNeighborToReportTo] = FOUND_OFF;
+              // if I am the starting point..
+              // signal no victory, stop the search, cuz we found an off
             }
-            else if (neighborValue == NO_FOUND_OFF) {
+            else if (neighborValue == NO_FOUND_OFF) { // just heard back from neighbor that they haven't found and OFF
               // Acknowledge and move on to the next one
               faceValues[neighborSearchingForWin] = NO_FOUND_OFF;
               isWaitingOnNeighbor = false;
-              neighborSearchingForWin = (neighborSearchingForWin + 1) % 6;  //
+              // if I am the starting point..
+              // signal victory, cuz we searched all and didn't find an OFF
+
+              if (indexOfNeighborToReportTo != 6) { // I'm not the starting point
+                neighborSearchingForWin = (neighborSearchingForWin + 1) % 6;
+              }
+              else { // I'm the starting point
+                if (neighborSearchingForWin == 5) { // last side I will search
+                  // signal victory, cuz we searched all and didn't find an OFF
+                  isSearchingForWin = false;
+                  foundWin = true;
+                }
+                else {
+                  // advance to the next side, if we have search all sides, stop searching
+                  neighborSearchingForWin = (neighborSearchingForWin + 1) % 6;
+                }
+              }
             }
           } //end waiting on neighbor
         }
@@ -172,14 +197,6 @@ void loop() {
     setColor(dim(BLUE, 64));
   }
 
-
-  if (foundWin) {
-    FOREACH_FACE(f) {
-      setColorOnFace(ORANGE, f);
-    }
-  }
-
-
   // DEBUG VISUALIZATION
   FOREACH_FACE(f) {
     switch (faceValues[f]) {
@@ -208,7 +225,8 @@ void loop() {
         break;
 
     }
-  } //END DEBUG VISUALIZATION
+  } // end face loop
+
   if (flashTimer.isExpired()) {
     flashOn = !flashOn;
     flashTimer.set(FLASH_DELAY);
@@ -218,10 +236,23 @@ void loop() {
     setColorOnFace(OFF, neighborSearchingForWin);
   }
 
+  if (foundWin) {
+    setColor(ORANGE);
+  }
+  //END DEBUG VISUALIZATION
 }
 
 void setAllTo(byte state) {
   FOREACH_FACE(f) {
     faceValues[f] = state;
   }
+}
+
+bool isDoneSearching() {
+  FOREACH_FACE(f) {
+    if (faceValues[f] == CHILL || faceValues[f] == WAITING || faceValues[f] == SEARCHING) {
+      return false;
+    }
+  }
+  return true;
 }
