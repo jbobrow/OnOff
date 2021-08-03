@@ -7,7 +7,7 @@
 enum signalStates {INERT, GO, RESOLVE};
 byte signalState = INERT;
 
-enum gameModes {PLAY, WIN, RESET};//these modes will simply be different colors
+enum gameModes {PLAY, RESET};//these modes will simply be different colors
 byte gameMode = PLAY;//the default mode when the game begins
 
 bool isOn = false;
@@ -42,9 +42,6 @@ void loop() {
     case PLAY:
       playLoop();
       break;
-    case WIN:
-      winLoop();
-      break;
     case RESET:
       resetLoop();
       break;
@@ -53,7 +50,7 @@ void loop() {
   // communicate with neighbors
   // share both signalState (i.e. when to change) and the game mode
   FOREACH_FACE(f) {
-    byte sendData = (myPressStates[f] << 4) + (signalState << 2) + (gameMode);
+    byte sendData = (myPressStates[f] << 3) + (signalState << 1) + (gameMode);
     setValueSentOnFace(sendData, f);
   }
 }
@@ -86,6 +83,7 @@ void playLoop() {
       if (myPressStates[f] == NONE) {
         if (neighborPressState == PRESS) {
           myPressStates[f] = ACK;
+          isOn = !isOn; // switch state early
         }
       }
       else if (myPressStates[f] == PRESS) {
@@ -96,7 +94,6 @@ void playLoop() {
       else if (myPressStates[f] == ACK && !wasPressed) {
         if (neighborPressState != PRESS) {
           myPressStates[f] = NONE;
-          isOn = !isOn;
         }
       }
     }
@@ -187,9 +184,6 @@ void changeMode( byte mode ) {
   if (gameMode == PLAY) {
     // nothing at the moment
   }
-  else if (gameMode == WIN) {
-    // nothing at the moment
-  }
   else if (gameMode == RESET) {
     resetTimer.set(255);
   }
@@ -248,13 +242,13 @@ void resolveLoop() {
 
 
 byte getGameMode(byte data) {
-  return (data & 3);//returns bits E and F
+  return (data & 1);//returns bits F
 }
 
 byte getSignalState(byte data) {
-  return ((data >> 2) & 3);//returns bits C and D
+  return ((data >> 1) & 3);//returns bit D and E
 }
 
 byte getPressState(byte data) {
-  return ((data >> 4) & 3);//returns bit A and B
+  return ((data >> 3) & 7);//returns bit A, B, C
 }
