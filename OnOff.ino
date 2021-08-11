@@ -4,19 +4,17 @@
    Basic shared game state for play, win, and reset
 */
 
-enum signalStates {INERT, GO, RESOLVE};
-byte signalState = INERT;
-
-enum gameModes {PLAY, RESET};//these modes will simply be different colors
-byte gameMode = PLAY;//the default mode when the game begins
-
 bool isOn = false;
 
-enum pressStates {NONE, PRESS, ACK};
-byte myPressStates[6] = {NONE, NONE, NONE, NONE, NONE, NONE};
-byte wasPressed = false;
+enum pressStates {INERT, PRESS, FLIP, RESOLVE, RESET, RESET_RESOLVE};
+byte myPressState = INERT;
+
+byte searchState[6] = {0, 0, 0, 0, 0, 0}; // place holder
 
 Timer resetTimer;
+
+Timer slowTimer;
+#define SLOW_STEP_DURATION 500
 
 void setup() {
 
@@ -24,126 +22,59 @@ void setup() {
 
 void loop() {
 
-  // The following listens for and updates game state across all Blinks
-  switch (signalState) {
-    case INERT:
-      inertLoop();
-      break;
-    case GO:
-      goLoop();
-      break;
-    case RESOLVE:
-      resolveLoop();
-      break;
-  }
+  if (slowTimer.isExpired()) {
+    slowTimer.set(SLOW_STEP_DURATION);
+    // game logic
+    switch (myPressState) {
+      case INERT:
+        inertLoop();
+        break;
+      case PRESS:
+        pressLoop();
+        break;
+      case FLIP:
+        flipLoop();
+        break;
+      case RESOLVE:
+        resolveLoop();
+        break;
+      case RESET:
+        resetLoop();
+        break;
+      case RESET_RESOLVE:
+        resetResolveLoop();
+        break;
+    }
 
-  // The following is loops for each of our game states
-  switch (gameMode) {
-    case PLAY:
-      playLoop();
-      break;
-    case RESET:
-      resetLoop();
-      break;
-  }
+    // display
+    if (isOn) {
+      setColor(WHITE);
+    }
+    else {
+      setColor(OFF);
+      setColorOnFace(dim(BLUE, 128), 0);
+      setColorOnFace(dim(BLUE, 128), 2);
+      setColorOnFace(dim(BLUE, 128), 4);
+    }
 
-  // communicate with neighbors
-  // share both signalState (i.e. when to change) and the game mode
-  FOREACH_FACE(f) {
-    byte sendData = (myPressStates[f] << 3) + (signalState << 1) + (gameMode);
-    setValueSentOnFace(sendData, f);
-  }
-}
+    // debug visuals
 
-/*
-   Play Loop
-*/
-void playLoop() {
+    switch (myPressState) {
+      case INERT:  setColorOnFace(GREEN, 0); break;
+      case PRESS:  setColorOnFace(ORANGE, 0); break;
+      case FLIP:  setColorOnFace(YELLOW, 0); break;
+      case RESOLVE:  setColorOnFace(BLUE, 0); break;
+      case RESET:  setColorOnFace(RED, 0); break;
+      case RESET_RESOLVE:  setColorOnFace(MAGENTA, 0); break;
+    }
 
-  // press to start
-  if (buttonDoubleClicked()) {
-    changeMode(RESET);  // change game mode on all Blinks
-  }
-
-  if (buttonSingleClicked()) {
-    // communicate to each neighbor to change
+    // communicate with neighbors
+    // share both signalState (i.e. when to change) and the game mode
     FOREACH_FACE(f) {
-      myPressStates[f] = PRESS;
-    }
-    // toggle on/off
-    isOn = !isOn;
-
-    wasPressed = true;
-  }
-
-  // communicate with neighbors
-  FOREACH_FACE(f) {
-    if (!isValueReceivedOnFaceExpired(f)) {
-      byte neighborPressState = getPressState(getLastValueReceivedOnFace(f));
-      if (myPressStates[f] == NONE) {
-        if (neighborPressState == PRESS) {
-          myPressStates[f] = ACK;
-          isOn = !isOn; // switch state early
-        }
-      }
-      else if (myPressStates[f] == PRESS) {
-        if (neighborPressState == ACK) {
-          myPressStates[f] = ACK;
-        }
-      }
-      else if (myPressStates[f] == ACK && !wasPressed) {
-        if (neighborPressState != PRESS) {
-          myPressStates[f] = NONE;
-        }
-      }
+      byte sendData = (searchState[f] << 3) + (myPressState);
+      setValueSentOnFace(sendData, f);
     }
   }
-
-  // check that all acknowledged and then return to none
-  if (wasPressed) {
-    bool allNeighborsReceivedPress = true;
-    FOREACH_FACE(f) {
-      if (!isValueReceivedOnFaceExpired(f)) {
-        if (myPressStates[f] == ACK) {
-          continue;
-        }
-        else {
-          allNeighborsReceivedPress = false;
-        }
-      }
-    }
-    if (allNeighborsReceivedPress) {
-      FOREACH_FACE(f) {
-        myPressStates[f] = NONE;
-        wasPressed = false;
-      }
-    }
-  }
-
-  if (isOn) {
-    setColor(WHITE);
-  }
-  else {
-    setColor(OFF);
-    setColorOnFace(dim(BLUE, 128), 0);
-    setColorOnFace(dim(BLUE, 128), 2);
-    setColorOnFace(dim(BLUE, 128), 4);
-  }
-
-  //  // Debug by showing comm_states
-  //  FOREACH_FACE(f) {
-  //    switch(myPressStates[f]) {
-  //      case NONE:
-  //        setColorOnFace(WHITE, f);
-  //        break;
-  //      case PRESS:
-  //        setColorOnFace(RED, f);
-  //        break;
-  //      case ACK:
-  //        setColorOnFace(YELLOW, f);
-  //        break;
-  //    }
-  //  }
 }
 
 
@@ -157,51 +88,39 @@ void winLoop() {
 
 
 /*
-   Reset Loop
-*/
-void resetLoop() {
-
-  isOn = false; // return to off
-  FOREACH_FACE(f) {
-    myPressStates[f] = NONE;
-  }
-
-  setColor(dim(WHITE, resetTimer.getRemaining()));
-  // TODO: maybe do a 1 second animation to show that a wipe has happened then return to play..
-  if (resetTimer.isExpired()) {
-    changeMode(PLAY);
-  }
-}
-
-/*
-   pass this a game mode to switch to
-*/
-void changeMode( byte mode ) {
-  gameMode = mode;  // change my own mode
-  signalState = GO; // signal my neighbors
-
-  // handle any items that a game should do once when it changes
-  if (gameMode == PLAY) {
-    // nothing at the moment
-  }
-  else if (gameMode == RESET) {
-    resetTimer.set(255);
-  }
-}
-
-
-/*
    This loop looks for a GO signalState
    Also gets the new gameMode
 */
 void inertLoop() {
 
-  //listen for neighbors in GO
+  if (buttonSingleClicked()) {
+    // communicate to each neighbor to change
+    myPressState = PRESS;
+  }
+
+  //listen for neighbors
   FOREACH_FACE(f) {
     if (!isValueReceivedOnFaceExpired(f)) {//a neighbor!
-      if (getSignalState(getLastValueReceivedOnFace(f)) == GO) {//a neighbor saying GO!
-        byte neighborGameMode = getGameMode(getLastValueReceivedOnFace(f));
-        changeMode(neighborGameMode);
+      if (getPressState(getLastValueReceivedOnFace(f)) == PRESS) {//a neighbor saying PRESS!
+        myPressState = FLIP;
+        // do something
+      }
+    }
+  }
+}
+
+/*
+   Flip Loop
+*/
+void flipLoop() {
+
+  myPressState = RESOLVE; // if I don't see a press
+
+  //listen for neighbors
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {//a neighbor!
+      if (getPressState(getLastValueReceivedOnFace(f)) == PRESS) {//a neighbor saying PRESS!
+        myPressState = FLIP;  // remain in flip
       }
     }
   }
@@ -210,14 +129,14 @@ void inertLoop() {
 /*
    If all of my neighbors are in GO or RESOLVE, then I can RESOLVE
 */
-void goLoop() {
-  signalState = RESOLVE;//I default to this at the start of the loop. Only if I see a problem does this not happen
+void pressLoop() {
+  myPressState = RESOLVE;//I default to this at the start of the loop. Only if I see a problem does this not happen
 
-  //look for neighbors who have not heard the GO news
+  //look for neighbors who have not heard the PRESS news
   FOREACH_FACE(f) {
     if (!isValueReceivedOnFaceExpired(f)) {//a neighbor!
-      if (getSignalState(getLastValueReceivedOnFace(f)) == INERT) {//This neighbor doesn't know it's GO time. Stay in GO
-        signalState = GO;
+      if (getPressState(getLastValueReceivedOnFace(f)) != FLIP) {
+        myPressState = PRESS;
       }
     }
   }
@@ -228,27 +147,40 @@ void goLoop() {
    Now receive the game mode
 */
 void resolveLoop() {
-  signalState = INERT;//I default to this at the start of the loop. Only if I see a problem does this not happen
+  myPressState = INERT;//I default to this at the start of the loop. Only if I see a problem does this not happen
 
   //look for neighbors who have not moved to RESOLVE
   FOREACH_FACE(f) {
     if (!isValueReceivedOnFaceExpired(f)) {//a neighbor!
-      if (getSignalState(getLastValueReceivedOnFace(f)) == GO) {//This neighbor isn't in RESOLVE. Stay in RESOLVE
-        signalState = RESOLVE;
+      if (getPressState(getLastValueReceivedOnFace(f)) != RESOLVE && getPressState(getLastValueReceivedOnFace(f)) != INERT) {//This neighbor isn't in RESOLVE. Stay in RESOLVE
+        myPressState = RESOLVE;
       }
     }
+  }
+
+  if (myPressState == INERT) {
+    // toggle on/off
+    isOn = !isOn;
   }
 }
 
 
-byte getGameMode(byte data) {
-  return (data & 1);//returns bits F
+/*
+   Reset Loop
+*/
+void resetLoop() {
+
 }
 
-byte getSignalState(byte data) {
-  return ((data >> 1) & 3);//returns bit D and E
+void resetResolveLoop() {
+
+}
+
+
+byte getSearchState(byte data) {
+  return ((data >> 3) & 7);
 }
 
 byte getPressState(byte data) {
-  return ((data >> 3) & 7);//returns bit A, B, C
+  return (data & 7);
 }
