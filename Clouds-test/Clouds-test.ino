@@ -1,31 +1,27 @@
 /*
- * Search for any "OFF" Blinks, if none found, signal win condition
- * 
- * How to use:
- *  Single Click = turn a Blink on or off (toggle)
- *  Double Click = start search from this Blink
- */
+   Search for any "OFF" Blinks, if none found, signal win condition
 
-enum winSearchValues {CHILL, SEARCHING, WAITING, FOUND_OFF, NO_FOUND_OFF};
-byte winSearchValue;
+   How to use:
+    Single Click = turn a Blink on or off (toggle)
+    Double Click = start search from this Blink
+*/
+
+enum winSearchValues {CHILL, SEARCHING, WAITING, FOUND_OFF, NO_FOUND_OFF, VICTORY, DEFEAT};
 
 bool isSearchingForWin;
-bool isOn = true;
-bool foundWin = false;
-bool flashOn = false;
-bool foundSearcher = false;
-bool firstVisit = false;
-
 bool isWaitingOnNeighbor;
+bool foundWin = false;
 byte neighborSearchingForWin;    //changing index
 byte indexOfNeighborToReportTo = 6;  // use this for where we started our search
 
+bool isOn = true;
+bool flashOn = false;
 
 byte faceValues[6] = {CHILL, CHILL, CHILL, CHILL, CHILL, CHILL};
 
 
 Timer slowTimer;
-#define FRAME_DELAY 200
+#define FRAME_DELAY 50
 
 Timer flashTimer;
 #define FLASH_DELAY 100
@@ -58,7 +54,6 @@ void loop() {
         setAllTo(SEARCHING);
         neighborSearchingForWin = 0;
         indexOfNeighborToReportTo = 6;  //special for master blink
-        firstVisit = true;
       }
 
     }
@@ -70,6 +65,7 @@ void loop() {
         isSearchingForWin = false;
         if (indexOfNeighborToReportTo == 6) { // if I am the origin
           foundWin = true;
+          setAllTo(VICTORY);
         }
       }
 
@@ -125,6 +121,9 @@ void loop() {
               faceValues[indexOfNeighborToReportTo] = FOUND_OFF;
               // if I am the starting point..
               // signal no victory, stop the search, cuz we found an off
+              if (indexOfNeighborToReportTo == 6) {
+                setAllTo(DEFEAT);
+              }
             }
             else if (neighborValue == NO_FOUND_OFF) { // just heard back from neighbor that they haven't found and OFF
               // Acknowledge and move on to the next one
@@ -141,6 +140,7 @@ void loop() {
                   // signal victory, cuz we searched all and didn't find an OFF
                   isSearchingForWin = false;
                   foundWin = true;
+                  setAllTo(VICTORY);
                 }
                 else {
                   // advance to the next side, if we have search all sides, stop searching
@@ -159,6 +159,12 @@ void loop() {
         if (!isValueReceivedOnFaceExpired(f)) {
           byte neighborValue = getLastValueReceivedOnFace(f);
 
+          if (neighborValue == VICTORY) {
+            setAllTo(VICTORY);  // spread the victory
+          }
+          else if (neighborValue == DEFEAT) {
+            setAllTo(DEFEAT);  // spread the victory
+          }
 
           if (neighborValue == WAITING && f != indexOfNeighborToReportTo) { //if neighbor face value is searching
 
@@ -230,7 +236,12 @@ void loop() {
       case NO_FOUND_OFF:
         setColorOnFace(GREEN, f);
         break;
-
+      case DEFEAT:
+        setColorOnFace(ORANGE, f);
+        break;
+      case VICTORY:
+        setColorOnFace(MAGENTA, f);
+        break;
     }
   } // end face loop
 
@@ -241,10 +252,6 @@ void loop() {
   }
   if (flashOn && isSearchingForWin) {
     setColorOnFace(OFF, neighborSearchingForWin);
-  }
-
-  if (foundWin) {
-    setColor(ORANGE);
   }
   //END DEBUG VISUALIZATION
 }
