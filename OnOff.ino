@@ -12,6 +12,7 @@ byte myPressState = INERT;
 byte searchState[6] = {0, 0, 0, 0, 0, 0}; // place holder
 
 Timer resetTimer;
+#define RESET_DURATION 500
 
 Timer slowTimer;
 #define SLOW_STEP_DURATION 500
@@ -56,6 +57,10 @@ void loop() {
       setColorOnFace(dim(BLUE, 128), 0);
       setColorOnFace(dim(BLUE, 128), 2);
       setColorOnFace(dim(BLUE, 128), 4);
+    }
+
+    if(!resetTimer.isExpired()) {
+      setColor(dim(WHITE, resetTimer.getRemaining()/2));
     }
 
     // debug visuals
@@ -203,6 +208,8 @@ void resetResolveLoop() {
   if (myPressState == INERT) {
     // reset by all going dark
     isOn = false;
+    // animate reset
+    resetTimer.set(RESET_DURATION);
   }
 }
 
