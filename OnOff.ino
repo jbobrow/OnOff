@@ -22,8 +22,8 @@ void setup() {
 
 void loop() {
 
-////  if (slowTimer.isExpired()) {
-//    slowTimer.set(SLOW_STEP_DURATION);
+  if (slowTimer.isExpired()) {
+    slowTimer.set(SLOW_STEP_DURATION);
 
     // game logic
     switch (myPressState) {
@@ -60,14 +60,14 @@ void loop() {
 
     // debug visuals
 
-//    switch (myPressState) {
-//      case INERT:  setColorOnFace(GREEN, 0); break;
-//      case PRESS:  setColorOnFace(ORANGE, 0); break;
-//      case FLIP:  setColorOnFace(YELLOW, 0); break;
-//      case RESOLVE:  setColorOnFace(BLUE, 0); break;
-//      case RESET:  setColorOnFace(RED, 0); break;
-//      case RESET_RESOLVE:  setColorOnFace(MAGENTA, 0); break;
-//    }
+    switch (myPressState) {
+      case INERT:  setColorOnFace(GREEN, 0); break;
+      case PRESS:  setColorOnFace(ORANGE, 0); break;
+      case FLIP:  setColorOnFace(YELLOW, 0); break;
+      case RESOLVE:  setColorOnFace(BLUE, 0); break;
+      case RESET:  setColorOnFace(RED, 0); break;
+      case RESET_RESOLVE:  setColorOnFace(MAGENTA, 0); break;
+    }
 
     // communicate with neighbors
     // share both signalState (i.e. when to change) and the game mode
@@ -75,7 +75,7 @@ void loop() {
       byte sendData = (searchState[f] << 3) + (myPressState);
       setValueSentOnFace(sendData, f);
     }
-//  }
+  }
 }
 
 
@@ -95,8 +95,11 @@ void winLoop() {
 void inertLoop() {
 
   if (buttonSingleClicked()) {
-    // communicate to each neighbor to change
     myPressState = PRESS;
+  }
+
+  if (buttonDoubleClicked()) {
+    myPressState = RESET;
   }
 
   //listen for neighbors
@@ -104,7 +107,9 @@ void inertLoop() {
     if (!isValueReceivedOnFaceExpired(f)) {//a neighbor!
       if (getPressState(getLastValueReceivedOnFace(f)) == PRESS) {//a neighbor saying PRESS!
         myPressState = FLIP;
-        // do something
+      }
+      if (getPressState(getLastValueReceivedOnFace(f)) == RESET) {//a neighbor saying RESET!
+        myPressState = RESET;
       }
     }
   }
@@ -170,11 +175,35 @@ void resolveLoop() {
    Reset Loop
 */
 void resetLoop() {
+  myPressState = RESET_RESOLVE; // if I don't see a RESET
+
+  //listen for neighbors
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {//a neighbor!
+      if (getPressState(getLastValueReceivedOnFace(f)) != RESET && getPressState(getLastValueReceivedOnFace(f)) != RESET_RESOLVE) {//a neighbor saying RESET!
+        myPressState = RESET;  // remain in flip
+      }
+    }
+  }
 
 }
 
 void resetResolveLoop() {
+  myPressState = INERT;//I default to this at the start of the loop. Only if I see a problem does this not happen
 
+  //look for neighbors who have not moved to RESOLVE
+  FOREACH_FACE(f) {
+    if (!isValueReceivedOnFaceExpired(f)) {//a neighbor!
+      if (getPressState(getLastValueReceivedOnFace(f)) != RESET_RESOLVE && getPressState(getLastValueReceivedOnFace(f)) != INERT) {//This neighbor isn't in RESOLVE. Stay in RESOLVE
+        myPressState = RESET_RESOLVE;
+      }
+    }
+  }
+
+  if (myPressState == INERT) {
+    // reset by all going dark
+    isOn = false;
+  }
 }
 
 
