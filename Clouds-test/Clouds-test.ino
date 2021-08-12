@@ -41,7 +41,7 @@ void loop() {
       isOn = !isOn;
 
     }
-    if (buttonDoubleClicked() && !isSearchingForWin) {
+    if (buttonDoubleClicked()) {
 
       //Start Search for any off blinks
       //If I am an off blink, no need to search
@@ -114,6 +114,7 @@ void loop() {
     setColorOnFace(OFF, neighborSearchingForWin);
   }
   //END DEBUG VISUALIZATION
+
 }
 
 void checkForWin() {
@@ -226,26 +227,18 @@ void checkForWin() {
     //      }
 
     // look to present neighbors
+    if (faceValues[0] == VICTORY) {
+      if (buttonPressed()) {
+        setAllTo(DEFEAT);
+      }
+    }
+
     FOREACH_FACE(f) {
       if (!isValueReceivedOnFaceExpired(f)) {
         byte neighborValue = getLastValueReceivedOnFace(f);
 
 
-        if (faceValues[0] == VICTORY) {
-          byte value = RESOLVE;
-
-          //listen for neighbors
-          FOREACH_FACE(f) {
-            if (!isValueReceivedOnFaceExpired(f)) {//a neighbor!
-              if (getLastValueReceivedOnFace(f) != VICTORY && getLastValueReceivedOnFace(f) != RESOLVE) {//a neighbor saying
-                value = VICTORY;  // remain in VICTORY
-              }
-            }
-          }
-
-          setAllTo(value);
-        }
-        else if (faceValues[0] == DEFEAT) {
+        if (faceValues[0] == DEFEAT) {
           byte value = RESOLVE;
 
           //listen for neighbors
@@ -270,9 +263,9 @@ void checkForWin() {
               }
             }
           }
-          
+
           setAllTo(value);
-          if(value == CHILL) {
+          if (value == CHILL) {
             resetPiece();
           }
         }
@@ -310,6 +303,8 @@ void checkForWin() {
 
     } // end for loop
   } // end not yet searching
+
+  buttonPressed();
 }
 
 void resetPiece() {
