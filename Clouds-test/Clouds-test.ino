@@ -6,7 +6,7 @@
     Double Click = start search from this Blink
 */
 
-enum winSearchValues {CHILL, SEARCHING, WAITING, FOUND_OFF, NO_FOUND_OFF, VICTORY, DEFEAT};
+enum winSearchValues {CHILL, SEARCHING, WAITING, FOUND_OFF, NO_FOUND_OFF, VICTORY, DEFEAT, RESOLVE};
 
 bool isSearchingForWin;
 bool isWaitingOnNeighbor;
@@ -21,7 +21,7 @@ byte faceValues[6] = {CHILL, CHILL, CHILL, CHILL, CHILL, CHILL};
 
 
 Timer slowTimer;
-#define FRAME_DELAY 50
+#define FRAME_DELAY 0
 
 Timer flashTimer;
 #define FLASH_DELAY 100
@@ -58,7 +58,66 @@ void loop() {
 
     }
 
-    if (isSearchingForWin) {
+    checkForWin();
+
+  } // end slow timer
+
+
+  // communicate with neighbors
+  FOREACH_FACE(f) {
+    setValueSentOnFace(faceValues[f], f);
+  }
+
+  // Listen for message from neighbor to search for any off blinks
+  // if I am off,
+  // return message to neighbor asking me to search; message should say "i am an off blink"
+  // else if any of my neighbors are not yet searched blinks
+  // then ask them to search for any off blinks
+
+
+  if (isOn) {
+    setColor(WHITE);
+  }
+  else {
+    setColor(dim(BLUE, 64));
+  }
+
+  // DEBUG VISUALIZATION
+  FOREACH_FACE(f) {
+    switch (faceValues[f]) {
+      case CHILL:
+        {
+          if (isOn) {
+            setColorOnFace(WHITE, f);
+          }
+          else {
+            setColorOnFace(dim(BLUE, 64), f);
+          }
+        }
+        break;
+      case SEARCHING:     setColorOnFace(BLUE, f);    break;
+      case WAITING:       setColorOnFace(YELLOW, f);  break;
+      case FOUND_OFF:     setColorOnFace(RED, f);     break;
+      case NO_FOUND_OFF:  setColorOnFace(GREEN, f);   break;
+      case DEFEAT:        setColorOnFace(ORANGE, f);  break;
+      case VICTORY:       setColorOnFace(MAGENTA, f); break;
+      case RESOLVE:       setColorOnFace(makeColorHSB(random(255), 255, 255), f); break;
+    }
+  } // end face loop
+
+  if (flashTimer.isExpired()) {
+    flashOn = !flashOn;
+    flashTimer.set(FLASH_DELAY);
+
+  }
+  if (flashOn && isSearchingForWin) {
+    setColorOnFace(OFF, neighborSearchingForWin);
+  }
+  //END DEBUG VISUALIZATION
+}
+
+void checkForWin() {
+  if (isSearchingForWin) {
 
       //check if done
       if (isDoneSearching()) {
@@ -154,6 +213,18 @@ void loop() {
     }
     else // not yet searching, listening for the opportunity to participate
     {
+
+//      if(faceValues[0] == RESOLVE) {
+//        byte value = CHILL;
+//        FOREACH_FACE(f) {
+//        if (!isValueReceivedOnFaceExpired(f)) {
+//          byte neighborValue = getLastValueReceivedOnFace(f);
+//          if(neighborValue == VICTORY) {
+//            value = RESOLVE;
+//          }
+//        }
+//      }
+      
       // look to present neighbors
       FOREACH_FACE(f) {
         if (!isValueReceivedOnFaceExpired(f)) {
@@ -163,8 +234,8 @@ void loop() {
             setAllTo(VICTORY);  // spread the victory
           }
           else if (neighborValue == DEFEAT) {
-            setAllTo(DEFEAT);  // spread the victory
-          }
+            setAllTo(DEFEAT);  // spread the defeat
+          }          
 
           if (neighborValue == WAITING && f != indexOfNeighborToReportTo) { //if neighbor face value is searching
 
@@ -190,70 +261,6 @@ void loop() {
 
       } // end for loop
     } // end not yet searching
-
-  } // end slow timer
-  FOREACH_FACE(f) {
-    setValueSentOnFace(faceValues[f], f);
-  }
-
-  // Listen for message from neighbor to search for any off blinks
-  // if I am off,
-  // return message to neighbor asking me to search; message should say "i am an off blink"
-  // else if any of my neighbors are not yet searched blinks
-  // then ask them to search for any off blinks
-
-
-  if (isOn) {
-    setColor(WHITE);
-  }
-  else {
-    setColor(dim(BLUE, 64));
-  }
-
-  // DEBUG VISUALIZATION
-  FOREACH_FACE(f) {
-    switch (faceValues[f]) {
-      case CHILL:
-        {
-          if (isOn) {
-            setColorOnFace(WHITE, f);
-          }
-          else {
-            setColorOnFace(dim(BLUE, 64), f);
-          }
-
-        }
-        break;
-      case SEARCHING:
-        setColorOnFace(BLUE, f);
-        break;
-      case WAITING:
-        setColorOnFace(YELLOW, f);
-        break;
-      case FOUND_OFF:
-        setColorOnFace(RED, f);
-        break;
-      case NO_FOUND_OFF:
-        setColorOnFace(GREEN, f);
-        break;
-      case DEFEAT:
-        setColorOnFace(ORANGE, f);
-        break;
-      case VICTORY:
-        setColorOnFace(MAGENTA, f);
-        break;
-    }
-  } // end face loop
-
-  if (flashTimer.isExpired()) {
-    flashOn = !flashOn;
-    flashTimer.set(FLASH_DELAY);
-
-  }
-  if (flashOn && isSearchingForWin) {
-    setColorOnFace(OFF, neighborSearchingForWin);
-  }
-  //END DEBUG VISUALIZATION
 }
 
 void setAllTo(byte state) {
