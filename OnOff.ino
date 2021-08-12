@@ -6,6 +6,8 @@
 
 bool isOn = false;
 bool wasPressed = false;
+bool b_buttonSingleClicked;
+bool b_buttonDoubleClicked;
 
 enum pressStates {INERT, PRESS, FLIP, RESOLVE, RESET, RESET_RESOLVE};
 byte myPressState = INERT;
@@ -26,6 +28,8 @@ void loop() {
 
 //  if (slowTimer.isExpired()) {
 //    slowTimer.set(SLOW_STEP_DURATION);
+    b_buttonSingleClicked = buttonSingleClicked();
+    b_buttonDoubleClicked = buttonDoubleClicked();
 
     // game logic
     switch (myPressState) {
@@ -104,12 +108,12 @@ void winLoop() {
 */
 void inertLoop() {
 
-  if (buttonSingleClicked()) {
+  if (b_buttonSingleClicked) {
     myPressState = PRESS;
     wasPressed = true;
   }
 
-  if (buttonDoubleClicked()) {
+  if (b_buttonDoubleClicked) {
     myPressState = RESET;
   }
 
