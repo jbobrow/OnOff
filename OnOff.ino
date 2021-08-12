@@ -74,6 +74,10 @@ void loop() {
 //      case RESET:  setColorOnFace(RED, 0); break;
 //      case RESET_RESOLVE:  setColorOnFace(MAGENTA, 0); break;
 //    }
+    
+    switch (searchState[0]) {
+      case 5: setColorOnFace(MAGENTA,0); break; // VICTORY
+    }
 
     // communicate with neighbors
     // share both signalState (i.e. when to change) and the game mode
@@ -120,6 +124,9 @@ void inertLoop() {
       }
     }
   }
+
+  // general win search
+  checkForWin();
 }
 
 /*
@@ -178,6 +185,7 @@ void resolveLoop() {
     if(wasPressed) {
       // TODO: check for win condition
       wasPressed = false;
+      beginCheck();
     }
     
   }
@@ -218,6 +226,8 @@ void resetResolveLoop() {
     isOn = false;
     // animate reset
     resetTimer.set(RESET_DURATION);
+    // reset win condition search
+    resetPiece();
   }
 }
 
