@@ -5,6 +5,7 @@
 */
 
 bool isOn = false;
+bool wasPressed = false;
 
 enum pressStates {INERT, PRESS, FLIP, RESOLVE, RESET, RESET_RESOLVE};
 byte myPressState = INERT;
@@ -101,6 +102,7 @@ void inertLoop() {
 
   if (buttonSingleClicked()) {
     myPressState = PRESS;
+    wasPressed = true;
   }
 
   if (buttonDoubleClicked()) {
@@ -172,6 +174,12 @@ void resolveLoop() {
   if (myPressState == INERT) {
     // toggle on/off
     isOn = !isOn;
+    
+    if(wasPressed) {
+      // TODO: check for win condition
+      wasPressed = false;
+    }
+    
   }
 }
 
