@@ -79,8 +79,8 @@ void loop() {
 //      case RESET_RESOLVE:  setColorOnFace(MAGENTA, 0); break;
 //    }
     
-    switch (searchState[0]) {
-      case 5: setColorOnFace(MAGENTA,0); break; // VICTORY
+    if(searchState[0] == 5) { // VICTORY
+      setColor(MAGENTA);
     }
 
     // communicate with neighbors
