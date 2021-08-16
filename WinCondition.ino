@@ -7,18 +7,18 @@ byte neighborSearchingForWin;    //changing index
 byte indexOfNeighborToReportTo = 6;  // use this for where we started our search
 
 void beginCheck() {
-        //Start Search for any off blinks
-      //If I am an off blink, no need to search
-      if (!isOn) {
-        isSearchingForWin = false;
-      }
-      else {
-        //Else Ask each neighbor to search for off blinks
-        isSearchingForWin = true;
-        setAllTo(SEARCHING);
-        neighborSearchingForWin = 0;
-        indexOfNeighborToReportTo = 6;  //special for master blink
-      }
+  //Start Search for any off blinks
+  //If I am an off blink, no need to search
+  if (!isOn) {
+    isSearchingForWin = false;
+  }
+  else {
+    //Else Ask each neighbor to search for off blinks
+    isSearchingForWin = true;
+    setAllTo(SEARCHING);
+    neighborSearchingForWin = 0;
+    indexOfNeighborToReportTo = 6;  //special for master blink
+  }
 }
 
 void checkForWin() {
@@ -28,6 +28,9 @@ void checkForWin() {
     if (isDoneSearching()) {
       isSearchingForWin = false;
       if (indexOfNeighborToReportTo == 6) { // if I am the origin
+        if (!foundWin) {
+          initWin();
+        }
         foundWin = true;
         setAllTo(VICTORY);
       }
@@ -103,6 +106,9 @@ void checkForWin() {
               if (neighborSearchingForWin == 5) { // last side I will search
                 // signal victory, cuz we searched all and didn't find an OFF
                 isSearchingForWin = false;
+                if (!foundWin) {
+                  initWin();
+                }
                 foundWin = true;
                 setAllTo(VICTORY);
               }
@@ -175,6 +181,10 @@ void checkForWin() {
         }
         else {
           if (neighborValue == VICTORY) {
+            if (!foundWin) {
+              initWin();
+              foundWin = true;
+            }
             setAllTo(VICTORY);  // spread the victory
           }
           else if (neighborValue == DEFEAT) {
