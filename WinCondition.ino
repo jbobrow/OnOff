@@ -138,7 +138,7 @@ void checkForWin() {
 
     // look to present neighbors
     if (searchState[0] == VICTORY) {
-      if (b_buttonSingleClicked || b_buttonDoubleClicked) {
+      if (b_buttonSingleClicked || b_buttonLongPressed) {
         setAllTo(DEFEAT);
       }
     }
